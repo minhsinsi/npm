@@ -1,190 +1,186 @@
-const moment = require('moment-timezone');
-const crypto = require('crypto');
-const fs = require('fs');
-
-module.exports.config = {
-    name: 'rent',
-    version: '1.3.8',
-    hasPermssion: 3,
-    credits: 'DC-Nam & DongDev source lại & Vdang mod key',
-    description: 'thuê bot',
-    commandCategory: 'Admin',
-    usages: '[]',
-    cooldowns: 5,
-    usePrefix: false,
+exports.config = {
+	name: 'rent',
+	version: '2.0.0',
+	hasPermssion: 2,
+	credits: 'DC-Nam mod by Niiozic',
+	description: 'Thuê bot.', 
+	commandCategory: 'Admin',
+	usages: '[]',
+	cooldowns: 3
 };
 
-const dataPath = __dirname + '/data/thuebot.json';
-const keysPath = __dirname + '/data/keys.json';
+let fs = require('fs');
+if (!fs.existsSync(__dirname+'/data'))fs.mkdirSync(__dirname+'/data');
+let path = __dirname+'/data/thuebot.json';
 let data = [];
-let keys = {};
+let save = ()=>fs.writeFileSync(path, JSON.stringify(data));
+if (!fs.existsSync(path))save(); else data = require(path);
+let form_mm_dd_yyyy = (input = '', split = input.split('/'))=>`${split[1]}/${split[0]}/${split[2]}`;
+let invalid_date = date=>/^Invalid Date$/.test(new Date(date));
+exports.run = async function(o) {
+	let send = (msg, callback)=>{
+		console.log(msg)
+		o.api.sendMessage(msg, o.event.threadID, callback, o.event.messageID);
+	}
+	let prefix = (global.data.threadData.get(o.event.threadID) || {}).PREFIX||global.config.PREFIX;
+	let info = data.find($=>$.t_id==o.event.threadID);
+	try{
+	switch (o.args[0]) {
+		case 'add': {
+			if (!o.args[1])return send(`❎ Dùng ${prefix}${this.config.name} add + reply tin nhắn người cần thuê`);
+			var uid = o.event.senderID;
+			 if(o.event.type == "message_reply") {
+			uid = o.event.messageReply.senderID 
+		}  else if (Object.keys(o.event.mentions).length > 0) {
+				uid = Object.keys(o.event.mentions)[0];
+		}
+			let t_id = o.event.threadID;
+			let id = uid;
+			let time_start = moment.tz("Asia/Ho_Chi_Minh").format("DD/MM/YYYY");
+			let time_end = o.args[1];
+			if (isNaN(id) || isNaN(t_id))return send(`❎ ID Không Hợp Lệ!`);
+			if (invalid_date(form_mm_dd_yyyy(time_end)))return send(`❎ Thời Gian Không Hợp Lệ!`);
+			data.push({
+				t_id, id, time_start, time_end,
+			});
+			send(`✅ Set data box vào cơ sở dữ liệu thành công`);
+		};
+			break;
+		case 'info': {
+			let threadInfo = await o.api.getThreadInfo(info.t_id);
+			 send(`[ Thông Tin Thuê Bot ]\n\n👤 Tên người thuê: ${global.data.userName.get(info.id)}\n🌐 link Facebook: https://www.facebook.com/profile.php?id=${info.id}\n🏘️ Nhóm: ${(global.data.threadInfo.get(info.t_id) || {}).threadName}\n⚡ ID Nhóm: ${info.t_id}\n📆 Ngày Thuê: ${info.time_start}\n⏳ Hết Hạn: ${info.time_end}\n📌 Còn ${(()=> {
+			let time_diff = new Date(form_mm_dd_yyyy(info.time_end)).getTime()-(Date.now()+25200000);
+			let days = (time_diff/(1000*60*60*24))<<0;
+			let hour = (time_diff/(1000*60*60)%24)<<0;
+			return `${days} ngày ${hour} giờ là hết hạn.`;
+		})()}`, /*attachment: [await streamURL(`
+https://graph.facebook.com/${info.id}/picture?height=720&width=720&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`), await streamURL(threadInfo.imageSrc)]
+	}*/);};
+			break;
+		case 'del': {
+			let t_id = o.event.threadID
+			let id = o.event.senderID
+			var findData = data.find(item=>item.t_id==t_id)
+			if(!findData) return o.api.sendMessage("Box này hiện chưa thuê bot",t_id)
+			data = data.filter(item=>item.t_id!==t_id)
+			send(`✅ Đã xóa data box thành công`)
+			await save()
+			};
+			break;
+		case 'list': {
+			try{
+				const itemsPerPage = 10;
 
-if (!fs.existsSync(__dirname + '/data')) fs.mkdirSync(__dirname + '/data');
-if (fs.existsSync(dataPath)) data = JSON.parse(fs.readFileSync(dataPath));
-if (fs.existsSync(keysPath)) keys = JSON.parse(fs.readFileSync(keysPath));
+				const totalPages = Math.ceil(data.length / itemsPerPage);
 
-const saveData = () => fs.writeFileSync(dataPath, JSON.stringify(data));
-const saveKeys = () => fs.writeFileSync(keysPath, JSON.stringify(keys));
+					const startIndex = (1 - 1) * itemsPerPage;
+					const endIndex = startIndex + itemsPerPage;
+					const pageData = data.slice(startIndex, endIndex);
 
-const form_mm_dd_yyyy = (input = '', split = input.split('/')) => `${split[1]}/${split[0]}/${split[2]}`;
-const invalid_date = date => /^Invalid Date$/.test(new Date(date));
+					o.api.sendMessage(`[ Danh Sách Thuê Bot ${1}/${totalPages}]\n\n${pageData.map(($, i)=>`${i+1}. ${global.data.userName.get($.id)}\n📝 Tình trạng: ${new Date(form_mm_dd_yyyy($.time_end)).getTime() >= Date.now()+25200000?'Chưa Hết Hạn ✅': 'Đã Hết Hạn ❎'}\n🌾 Nhóm: ${(global.data.threadInfo.get($.t_id) || {}).threadName}\nTừ: ${$.time_start}\nĐến: ${$.time_end}`).join('\n\n')}\n\n→ Reply (phản hồi) theo stt để xem chi tiết\n→ Reply del + stt để xóa khỏi danh sách\n→ Reply out + stt để thoát nhóm (cách nhau để chọn nhiều số)\n→ Reply giahan + stt để gia hạn\nVí dụ: 12/12/2023 => 1/1/2024\n→ Reply page + stt để xem các nhóm khác\nVí dụ: page 2`,o.event.threadID, (err, info)=>{
+						global.client.handleReply.push({
+							name: this.config.name,
+							event: o.event,
+							data,
+							num: endIndex,
+							messageID: info.messageID,
+							author: o.event.senderID
+						})
+					});
 
-exports.run = function (o) {
-    const send = (msg, callback) => o.api.sendMessage(msg, o.event.threadID, callback, o.event.messageID);
-    if (!["100055154154050"].includes(o.event.senderID)) return send(`⚠️ Chỉ Admin chính mới có thể sử dụng!`);
-
-    switch (o.args[0]) {
-        case 'add': {
-            if (!o.args[1]) return send(`⚠️ Thêm người thuê bot vào dữ liệu:\n - rent add + ngày hết hạn\n - rent add + id người thuê + ngày hết hạn\n - rent add id nhóm + id người thuê + ngày hết hạn\n⚠️ Lưu ý: định dạng ngày là DD/MM/YYY`);
-            let userId = o.event.senderID;
-            if (o.event.type === "message_reply") {
-                userId = o.event.messageReply.senderID;
-            } else if (Object.keys(o.event.mentions).length > 0) {
-                userId = Object.keys(o.event.mentions)[0];
-            }
-            let t_id = o.event.threadID;
-            let id = userId;
-            let time_start = moment.tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY');
-            let time_end = o.args[1];
-            if (o.args.length === 4 && !isNaN(o.args[1]) && !isNaN(o.args[2]) && o.args[3].match(/\d{1,2}\/\d{1,2}\/\d{4}/)) {
-                t_id = o.args[1];
-                id = o.args[2];
-                time_start = moment.tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY');
-                time_end = o.args[3];
-            } else if (o.args.length === 3 && !isNaN(o.args[1]) && o.args[2].match(/\d{1,2}\/\d{1,2}\/d{4}/)) {
-                t_id = o.event.threadID;
-                id = o.args[1];
-                time_start = moment.tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY');
-                time_end = o.args[2];
-            }
-            if (isNaN(id) || isNaN(t_id)) return send(`⚠️ ID Không Hợp Lệ!`);
-            if (invalid_date(form_mm_dd_yyyy(time_start)) || invalid_date(form_mm_dd_yyyy(time_end))) return send(`⚠️ Thời Gian Không Hợp Lệ!`);
-            data.push({
-                t_id,
-                id,
-                time_start,
-                time_end,
-            });
-            send(`☑️ Đã thêm người thuê bot vào danh sách!`);
-            break;
-        }
-        case 'list': {
-            const userList = data.map(($, i) => `┏━━━━━━━━━━━━━━━━━━━┓\n┣➤ ${i + 1}. 👤 Người thuê: ${global.data.userName.get($.id)}\n┣➤ 📝 Tình trạng: ${new Date(form_mm_dd_yyyy($.time_end)).getTime() >= Date.now() + 25200000 ? 'Chưa Hết Hạn ✅' : 'Đã Hết Hạn ❎'}\n┣➤ 🔰 Nhóm: ${(global.data.threadInfo.get($.t_id) || {}).threadName}`).join('\n┗━━━━━━━━━━━━━━━━━━━┛\n');
-            const keyList = Object.entries(keys).map(([key, value], i) => `${i + 1}. Key: ${key}, Hạn dùng: ${value}`).join('\n');
-            send(`🔑 Danh sách thuê bot:\n${userList}\n\n🔑 Danh sách key:\n${keyList}`);
-            break;
-        }
-        case 'newkey': {
-            if (!o.args[1]) return send(`⚠️ Vui lòng cung cấp ngày hết hạn. Định dạng: DD/MM/YYYY`);
-            let time_end = o.args[1];
-            if (invalid_date(form_mm_dd_yyyy(time_end))) return send(`⚠️ Thời Gian Không Hợp Lệ!`);
-            let key = 'Vdangbot_' + crypto.randomBytes(3).toString('hex');
-            keys[key] = time_end;
-            saveKeys();
-            saveData();
-            send(`☑️ Đã tạo key: ${key} \n Ngày hết hạn: ${time_end}`);
-            break;
-        }
-        case 'use': {
-            if (!o.args[1]) return send(`⚠️ Vui lòng cung cấp key.`);
-            let key = o.args[1];
-            let keyInfo = keys[key];
-            if (!keyInfo) return send(`⚠️ Key không hợp lệ hoặc đã hết hạn.`);
-            if (keyInfo.threadID) return send(`⚠️ Key đã được sử dụng trong nhóm ${keyInfo.threadID}`);
-
-            let currentDate = moment.tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY');
-            if (moment(currentDate, 'DD/MM/YYYY').isAfter(moment(keyInfo, 'DD/MM/YYYY'))) return send(`⚠️ Key đã hết hạn.`);
-
-            let t_id = o.event.threadID;
-            let id = o.event.senderID;
-
-            data.push({
-                t_id,
-                id,
-                time_start: currentDate,
-                time_end: keyInfo,
-            });
-
-            delete keys[key];
-            saveData();
-            saveKeys();
-
-            send(`☑️ Key hợp lệ! Bạn đã được thêm vào danh sách thuê bot, ngày hết hạn: ${keyInfo}`);
-            break;
-        }
-        case 'deletekey': {
-            if (!o.args[1]) return send(`⚠️ Vui lòng cung cấp key cần xóa.`);
-            let key = o.args[1];
-            if (!keys[key]) return send(`⚠️ Key không tồn tại.`);
-            delete keys[key];
-            saveKeys();
-            send(`☑️ Key ${key} đã được xóa.`);
-            break;
-        }
-        default:
-            send(`Dùng: ${global.config.PREFIX}rent add → Để thêm nhóm vào danh sách thuê bot\nDùng: ${global.config.PREFIX}rent list → Để xem danh sách thuê bot và key\nDùng: ${global.config.PREFIX}rent newkey <ngày hết hạn> → Để tạo key thuê bot\nDùng: ${global.config.PREFIX}rent use <key> → Để sử dụng key\nDùng: ${global.config.PREFIX}rent deletekey <key> → Để xóa key\n𝗛𝗗𝗦𝗗 → ${global.config.PREFIX}rent lệnh cần dùng.`);
-    }
-    saveData();
+			}catch(e){
+				console.log(e)
+			}
+		};
+			break;
+		default: send(`Dùng: ${prefix}${this.config.name} list -> Để xem danh sách thuê bot\nDùng: ${prefix}${this.config.name} add + reply tin nhắn người cần thuê -> Để thêm nhóm vào danh sách thuê bot\nVí dụ: ${prefix}${this.config.name} add 12/12/2024`)
+			break;
+	}
+}catch(e){
+	console.log(e)
+}
+	save();
 };
+exports.handleReply = async function(o) {
+	try{
+	let _ = o.handleReply;
+	let send = (msg, callback)=>o.api.sendMessage(msg, o.event.threadID, callback, o.event.messageID);
+	if (o.event.senderID != _.event.senderID)return;
+	if (isFinite(o.event.args[0])) {
+		let info = data[o.event.args[0]-1];
+let threadInfo = await o.api.getThreadInfo(info.t_id);
+		if (!info)return send(`STT không tồn tại!`);
+		return send({body:`[ Thông Tin Thuê Bot ]\n\n👤 Tên người thuê: ${global.data.userName.get(info.id)}\n🌐 link Facebook: https://www.facebook.com/profile.php?id=${info.id}\n🏘️ Nhóm: ${(global.data.threadInfo.get(info.t_id) || {}).threadName}\n⚡ ID Nhóm: ${info.t_id}\n📆 Ngày Thuê: ${info.time_start}\n⏳ Hết Hạn: ${info.time_end}\n📌 Còn ${(()=> {
+			let time_diff = new Date(form_mm_dd_yyyy(info.time_end)).getTime()-(Date.now()+25200000);
+			let days = (time_diff/(1000*60*60*24))<<0;
+			let hour = (time_diff/(1000*60*60)%24)<<0;
+			return `${days} ngày ${hour} giờ là hết hạn.`;
+		})()}`,attachment: [await streamURL(`
+https://graph.facebook.com/${info.id}/picture?height=720&width=720&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`), await streamURL(threadInfo.imageSrc)]
+	});
+	} else if (o.event.args[0].toLowerCase() == 'del') {
+		o.event.args.shift();
+		for (const i of o.event.args) {
+			if (isNaN(i)) return send(`STT ${i} không hợp lệ!`);
+			if (i > data.length) return send(`STT ${i} không tồn tại!`);
+			//console.log(datadata)
+			data.splice(i - 1, 1);
+			console.log(data)
+		}
+		send(`✅ Đã xóa thành công!`);
+	} else if (o.event.args[0].toLowerCase() == 'giahan') {
+		let STT = o.event.args[1];
+		let time_start = o.event.args[2];
+		let time_end = o.event.args[4];  
+		if (invalid_date(form_mm_dd_yyyy(time_start)) || invalid_date(form_mm_dd_yyyy(time_end)))return send(`❎ Thời Gian Không Hợp Lệ!`);    
+		if (!data[STT-1])return send(`STT không tồn tại`);   
+		let $ = data[STT-1];   
+		$.time_start = time_start;
+		$.time_end = time_end;
+		send(`✅ Đã gia hạn nhóm thành công!`);
+	} else if (o.event.args[0].toLowerCase() == 'out') {
+		for (let i of o.event.args.slice(1)) await o.api.removeUserFromGroup(o.api.getCurrentUserID(), data[i-1].t_id);   
+		send(`Đã out nhóm theo yêu cầu`);
+	} else if(o.event.args[0].toLowerCase() == 'page') {
+		try{
+			console.log(o.event.args[1])
+		const itemsPerPage = _.num;
+		const totalPages = Math.ceil(data.length / itemsPerPage);
+		const pageNumber = o.event.args[1];
 
-exports.handleReply = async function (o) {
-    let _ = o.handleReply;
-    const send = (msg, callback) => o.api.sendMessage(msg, o.event.threadID, callback, o.event.messageID);
-    if (o.event.senderID != _.event.senderID) return;
-    if (isFinite(o.event.args[0])) {
-        let info = data[o.event.args[0] - 1];
-        if (!info) return send(`❎ STT không tồn tại!`);
-        return send(`[ THÔNG TIN NGƯỜI THUÊ BOT ]\n────────────────────\n👤 Người thuê: ${global.data.userName.get(info.id)}\n🌐 Link Facebook: https://www.facebook.com/profile.php?id=${info.id}\n👥 Nhóm: ${(global.data.threadInfo.get(info.t_id) || {}).threadName}\n🔰 TID: ${info.t_id}\n────────────────────\n📆 Ngày Thuê: ${info.time_start}\n──────\n⏳ Ngày hết Hạn: ${info.time_end}\n────────────────────\n⏰ ${(() => {
-            let time_diff = new Date(form_mm_dd_yyyy(info.time_end)).getTime() - (Date.now() + 25200000);
-            let days = (time_diff / (1000 * 60 * 60 * 24)) << 0;
-            let hour = ((time_diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)) << 0;
-            if (time_diff <= 0) {
-                return "Đã hết thời hạn thuê 🔐";
-            } else {
-                return `Còn ${days} ngày ${hour} giờ là hết hạn thuê`;
-            }
-        })()}`);
-    } else if (o.event.args[0].toLowerCase() == 'del') {
-        o.event.args.slice(1).sort((a, b) => b - a).forEach($ => data.splice($ - 1, 1));
-        send(`☑️ Đã xóa thành công!`);
-    } else if (o.event.args[0].toLowerCase() == 'giahan') {
-        let STT = o.event.args[1];
-        let time_start = moment.tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY');
-        let time_end = o.event.args[2];
-        if (invalid_date(form_mm_dd_yyyy(time_start)) || invalid_date(form_mm_dd_yyyy(time_end))) return send(`❎ Thời Gian Không Hợp Lệ!`);
-        if (!data[STT - 1]) return send(`❎ STT không tồn tại`);
-        let $ = data[STT - 1];
-        $.time_start = time_start;
-        $.time_end = time_end;
-        send(`☑️ Đã gia hạn nhóm thành công!`);
-    } else if (o.event.args[0].toLowerCase() == 'out') {
-        for (let i of o.event.args.slice(1)) await o.api.removeUserFromGroup(o.api.getCurrentUserID(), data[i - 1].t_id);
-        send(`⚠️ Đã out nhóm theo yêu cầu`);
-    };
-    saveData();
+		const startIndex = (pageNumber - 1) * itemsPerPage;
+		const endIndex = startIndex + itemsPerPage;
+		const pageData = data.slice(startIndex, endIndex);
+			o.api.sendMessage(`[ Danh Sách Thuê Bot ${pageNumber}/${totalPages}]\n\n${pageData.map(($, i)=>{
+				const listItemNumber = startIndex + i + 1;
+				return `${listItemNumber}. ${global.data.userName.get($.id) || ""}\n📝 Tình trạng: ${new Date(form_mm_dd_yyyy($.time_end)).getTime() >= Date.now()+25200000?'Chưa Hết Hạn ✅': 'Đã Hết Hạn ❎'}\n🌾 Nhóm: ${(global.data.threadInfo.get($.t_id) || {}).threadName || ""}\nTừ: ${$.time_start}\nĐến: ${$.time_end}`
+			}).join('\n\n')}\n\n→ Reply (phản hồi) theo stt để xem chi tiết\n→ Reply del + stt để xóa khỏi danh sách\n→ Reply out + stt để thoát nhóm (cách nhau để chọn nhiều số)\n→ Reply giahan + stt để gia hạn\nVí dụ: 12/12/2023 => 1/1/2024\n→ Reply page + stt để xem các nhóm khác\nVí dụ: page 2`,o.event.threadID, (err, info)=>{
+				if(err) return console.log(err)
+				global.client.handleReply.push({
+					name: this.config.name,
+					event: o.event,
+					data,
+					num: endIndex,
+					messageID: info.messageID,
+					author: o.event.senderID
+				})
+			});
+	}catch(e){
+		console.log(e)
+	}
+	}
+	save();
+}catch(e) {
+	console.log(e)
+}
 };
-
-exports.handleEvent = async function (o) {
-    const send = (msg, callback) => o.api.sendMessage(msg, o.threadID, callback, o.messageID);
-    if (o.body && o.body.startsWith('Vdangbot_')) {
-        let key = o.body.trim();
-        if (!keys[key]) return send(`❎ Key không hợp lệ hoặc đã hết hạn.`);
-        let time_end = keys[key];
-        let time_start = moment.tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY');
-        let t_id = o.threadID;
-        let id = o.senderID;
-
-        data.push({
-            t_id,
-            id,
-            time_start,
-            time_end,
-        });
-
-        delete keys[key];
-        saveData();
-        saveKeys();
-
-        send(`☑️ Key hợp lệ! Bạn đã được thêm vào danh sách thuê bot, ngày hết hạn: ${time_end}`);
-    }
-};
+async function streamURL(url, mime = 'jpg') {
+				const dest = `${__dirname}/data/${Date.now()}.${mime}`,
+						downloader = require('image-downloader'),
+						fse = require('fs-extra');
+				await downloader.image({
+						url, dest
+				});
+				setTimeout(j => fse.unlinkSync(j), 60 * 1000, dest);
+				return fse.createReadStream(dest);
+		};

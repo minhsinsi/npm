@@ -16,9 +16,7 @@
     "adminPaseOnly": false,
     "encryptSt": false,
     "DASHBOARD": true,
-    "commandDisabled": [
-        100022448225417
-    ],
+    "commandDisabled": [],
     "eventDisabled": [],
     "UPTIME": 1385294.0292840004,
     "EMAIL": "",
@@ -139,5 +137,6 @@
         "autoUnsend": true,
         "sendNoti": true,
         "timeToUnsend": 10
-    }
+    },
+    "alladmOnly": false
 }

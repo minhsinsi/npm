@@ -198,11 +198,13 @@ logger.loader(`Ping load toàn bộ commands và events • ${Date.now() - globa
 		let prefix = (global.data.threadData.get(event.threadID) || {}).PREFIX||global.config.PREFIX;
 		let send = (msg, callback)=>api.sendMessage(msg, event.threadID, callback, event.messageID);
 		if ((event.body||'').startsWith(prefix) && event.senderID != api.getCurrentUserID() && !global.config.ADMINBOT.includes(event.senderID)) {
-		let thuebot;
-		try { thuebot = JSON.parse(require('fs').readFileSync(process.cwd()+'/modules/commands/data/thuebot.json')); } catch { thuebot = []; };
-		let find_thuebot = thuebot.find($=>$.t_id == event.threadID);
-		if (!find_thuebot)return  api.send('[ BOT NOTIFICATION ]\n────────────────────────────────────────\n❎ Nhóm của bạn chưa thuê bot\n☎Vui lòng liên hệ Admin Võ N-đăng để thuê bot\nAcc bot bị mõm contact nên k share đc ae lưu ý ! \n────────────────────────────────────────\n',global.config.NDH[0], event.threadID);
-		if (new Date(form_mm_dd_yyyy(find_thuebot.time_end)).getTime() <= Date.now()+25200000)return api.shareContact(`[ BOT NOTIFICATION ]\n────────────────────\n❎ Nhóm của bạn đã hết hạn thuê bot\n☎Vui lòng liên hệ Admin Võ N-đăng để thuê bot\n────────────────────`, global.config.NDH[0], event.threadID);
+			let thuebot;
+            try { thuebot = JSON.parse(require('fs-extra').readFileSync(process.cwd() + '/modules/commands/data/thuebot.json')); } catch { thuebot = []; };
+            let find_thuebot = thuebot.find($ => $.t_id == event.threadID);
+            if (((global.data.threadData.get(event.threadID)?.PREFIX || global.config.PREFIX) + 'bank') != event.args[0]) {
+            if (!find_thuebot) return api.sendMessage(`❎ Nhóm của bạn chưa thuê bot, vui lòng liên hệ Admin để thuê bot\n`, event.threadID);
+            if (new Date(form_mm_dd_yyyy(find_thuebot.time_end)).getTime() <= Date.now() + 25200000) return api.sendMessage(`⚠️ Nhóm của bạn đã hết hạn thuê bot vui lòng thanh toán để tiếp tục sử dụng\n`, event.threadID);
+          };
 		};
 const checkttDataPath = __dirname + '/../modules/commands/kiemtra/';
 	setInterval(async() => {

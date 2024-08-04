@@ -17,7 +17,7 @@ module.exports.handleEvent = async ({ api, event, Threads }) => {
   if (event.body.indexOf("vdcos")==0 || (event.body.indexOf("CosCos")==0) || event.body.indexOf("cos")==0 ||
 event.body.indexOf("Cos")==0 ||
 event.body.indexOf("Vdcos")==0 ||
-event.body.indexOf("anime")==0) {
+event.body.indexOf("cosplay")==0) {
     const axios = global.nodemodule["axios"];
 const request = global.nodemodule["request"];
 const fs = global.nodemodule["fs-extra"];
